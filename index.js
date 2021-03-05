@@ -3,8 +3,11 @@ const moment = require('moment');
 
 const bot = new Telegraf(process.env.BOT_TOKEN);
 
-let chatName = 'Default name';
-let interval = null;
+let chatName = {
+    default: 'Default name'
+};
+
+let interval = {};
 
 const COMMANDS = {
     START: 'start',
@@ -27,6 +30,15 @@ const SEASONS = {
     WINTER: 'WINTER',
     SPRING: 'SPRING'
 }
+
+const helpMsg = `Commands list:
+/help - List of all commands
+/update - Update title and avatar
+/setname "name" - Set chat name
+/start - Start automatic update title and avatar
+/stop - Stop automatic update title and avatar
+/status - Get a automatic update status
+`;
 
 function getSeason() {
     const date = moment();
@@ -70,52 +82,52 @@ function changeTitle(ctx, forse){
     const {season, hit} = getSeason();
 
     if (forse || hit) {
-        ctx.telegram.setChatTitle(ctx.message.chat.id, `${getRandomEmoji(season)}${chatName}${getRandomEmoji(season)}`)
+        ctx.telegram.setChatTitle(ctx.message.chat.id, `${getRandomEmoji(season)}${chatName[ctx.message.chat.id] || changeTitle.default}${getRandomEmoji(season)}`)
     }
 }
+
+bot.telegram.setMyCommands([
+    {command: "update", description:"Update title and avatar"},
+    {command: "help", description:"List of all commands"},
+    {command: "setname", description:"Set chat name"},
+    {command: "start", description:"Start automatic update title and avatar"},
+    {command: "stop", description:"Stop automatic update title and avatar"},
+    {command: "status", description:"Get a automatic update status"},
+])
+
 bot.help((ctx) => {
-    ctx.telegram.sendMessage(
-        ctx.message.chat.id, 
-        `
-        /update - update title and avatar
-        /setname "name" - set chat name
-        /start - start automatic update title and avatar
-        /stop - stop automatic update title and avatar
-        /status - get a automatic update status
-        `
-    );
+    ctx.reply(helpMsg);
 });
 
 bot.command(COMMANDS.UPDATE, (ctx) => {
     changeTitle(ctx, true);
-    ctx.telegram.sendMessage(ctx.message.chat.id, 'Updated');
+    ctx.reply('Updated');
 })
 
 bot.command(COMMANDS.START, (ctx) => {
     const dayInMilliseconds = 1000 * 60 * 60 * 24;
-    interval = setInterval(() => {
-        changeTitle(ctx);
+    interval[ctx.message.chat.id] = setInterval(() => {
+        changeTitle(ctx, true);
     }, dayInMilliseconds);
-    ctx.telegram.sendMessage(ctx.message.chat.id, 'Started');
+    ctx.reply('Started');
 })
 
 bot.command(COMMANDS.STOP, (ctx) => {
-    clearInterval(interval)
-    ctx.telegram.sendMessage(ctx.message.chat.id, 'Stoped');
+    clearInterval(interval[ctx.message.chat.id])
+    ctx.reply('Stoped');
 })
 
 bot.command(COMMANDS.STATUS, (ctx) => {
-    ctx.telegram.sendMessage(ctx.message.chat.id, interval ? "Enabled": "Disabled");
+    ctx.reply(interval[ctx.message.chat.id] ? "Enabled": "Disabled");
 })
 
 bot.command(COMMANDS.SETNAME, (ctx) => {
     const [,name] = ctx.message.text.match(/"(.*?)"/);
-    chatName = name;
-    ctx.telegram.sendMessage(ctx.message.chat.id, `Identified like a "${chatName}"`);
+    chatName[ctx.message.chat.id] = name;
+    ctx.reply(`Identified like a "${name}"`);
 })
 
 bot.launch()
 
-// Enable graceful stop
 process.once('SIGINT', () => bot.stop('SIGINT'))
 process.once('SIGTERM', () => bot.stop('SIGTERM'))
