@@ -122,9 +122,16 @@ bot.command(COMMANDS.STATUS, (ctx) => {
 })
 
 bot.command(COMMANDS.SETNAME, (ctx) => {
+    try{
+
+    
     const [,name] = ctx.message.text.match(/"(.*?)"/);
     chatName[ctx.message.chat.id] = name;
     ctx.reply(`Identified like a "${name}"`);
+    }
+    catch {
+        ctx.reply('Incorrect command. Please try type\n/setname "Chat name"');
+    }
 })
 
 bot.launch()
